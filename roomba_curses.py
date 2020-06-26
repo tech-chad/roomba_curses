@@ -16,8 +16,8 @@ class Roomba:
                  width: int, height: int) -> None:
         self.base_y = base_y
         self.base_x = base_x
-        self.current_y = base_y
-        self.current_x = base_x + 1
+        self.y = base_y
+        self.x = base_x + 1
         self.room_width = width - 1
         self.room_height = height - 3
         self.charge = 100
@@ -35,10 +35,11 @@ class Roomba:
             if self.speed_count == self.speed:
                 self.speed_count = 0
                 self.charge -= self.discharge_rate
-                room[self.current_y][self.current_x] = " "
+                room[self.y][self.x] = " "
                 self._move()
-                room[self.current_y][self.current_x] = ROOMBA
+                room[self.y][self.x] = ROOMBA
             else:
+                room[self.y][self.x] = ROOMBA
                 self.speed_count += 1
         elif self.state == "charging":
             return self._charging()
@@ -54,50 +55,58 @@ class Roomba:
         else:
             self.state = "cleaning"
             directions = []
-            if self.current_y > 0:
-                directions.append((self.current_y - 1, self.current_x))
+            if self.y > 0:
+                if self.y - 1 != self.base_y:
+                    directions.append((self.y - 1, self.x))
 
-            if self.current_y > 0 and self.current_x < self.room_width:
-                directions.append((self.current_y - 1, self.current_x + 1))
+            if self.y > 0 and self.x < self.room_width:
+                if self.y - 1 != self.base_y and self.x + 1 != self.base_x:
+                    directions.append((self.y - 1, self.x + 1))
 
-            if self.current_x < self.room_width:
-                directions.append((self.current_y, self.current_x + 1))
+            if self.x < self.room_width:
+                if self.x + 1 != self.base_x:
+                    directions.append((self.y, self.x + 1))
 
-            if self.current_x < self.room_width and self.current_y < self.room_height:
-                directions.append((self.current_y + 1, self.current_x + 1))
+            if self.x < self.room_width and self.y < self.room_height:
+                if self.x + 1 != self.base_x and self.y + 1 != self.base_y:
+                    directions.append((self.y + 1, self.x + 1))
 
-            if self.current_y < self.room_height:
-                directions.append((self.current_y + 1, self.current_x))
+            if self.y < self.room_height:
+                if self.y + 1 != self.base_y:
+                    directions.append((self.y + 1, self.x))
 
-            if self.current_y < self.room_height and self.current_x > 0:
-                directions.append((self.current_y + 1, self.current_x - 1))
+            if self.y < self.room_height and self.x > 0:
+                if self.y + 1 != self.base_y and self.x - 1 != self.base_x:
+                    directions.append((self.y + 1, self.x - 1))
 
-            if self.current_x > 0:
-                directions.append((self.current_y, self.current_x - 1))
+            if self.x > 0:
+                if self.x - 1 != self.base_x:
+                    directions.append((self.y, self.x - 1))
 
-            if self.current_x > 0 and self.current_y > 0:
-                directions.append((self.current_y - 1, self.current_x - 1))
+            if self.x > 0 and self.y > 0:
+                if self.y - 1 != self.base_y and self.x - 1 != self.base_x:
+                    directions.append((self.y - 1, self.x - 1))
 
-            self.current_y, self.current_x = choice(directions)
+            self.y, self.x = choice(directions)
 
     def _return_home(self) -> Tuple[int, int]:
-        if self.current_y > self.base_y:
-            y = self.current_y - 1
-        elif self.current_y < self.base_y:
-            y = self.current_y + 1
+        if self.y > self.base_y:
+            y = self.y - 1
+        elif self.y < self.base_y:
+            y = self.y + 1
         else:
-            y = self.current_y
-        if self.current_x > self.base_x + 1:
-            x = self.current_x - 1
-        elif self.current_x < self.base_x + 1:
-            x = self.current_x + 1
+            y = self.y
+        if self.x > self.base_x + 1:
+            x = self.x - 1
+        elif self.x < self.base_x + 1:
+            x = self.x + 1
         else:
-            x = self.current_x
+            x = self.x
         if x == self.base_x + 1 and y == self.base_y:
             self.state = "charging"
-        self.current_y = y
-        self.current_x = x
-        return self.current_y, self.current_x
+        self.y = y
+        self.x = x
+        return self.y, self.x
 
     def _charging(self) -> None:
         self.charge += self.recharge_rate
@@ -132,7 +141,6 @@ def curses_main(screen) -> None:
         for y, row in enumerate(room):
             for x, d in enumerate(row):
                 screen.addstr(y, x, d)
-        screen.addstr(5, 0, BASE)
         battery, state = roomba.get_statues()
         msg = f"battery: {battery:.1f}%   {state}"
         screen.addstr(screen_height - 1, 0, msg)
