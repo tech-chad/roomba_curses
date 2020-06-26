@@ -7,7 +7,9 @@ from time import sleep
 from typing import Tuple
 
 ROOMBA = "@"
-DUST = "."
+DUST1 = "."
+DUST2 = ":"
+DUST3 = "&"
 BASE = "["
 
 
@@ -116,14 +118,20 @@ class Roomba:
 
 
 def add_dust(room: list, height: int, width: int) -> None:
-    random_y = randint(0, height - 3)
-    random_x = randint(0, width - 2)
-    if room[random_y][random_x] == BASE:
-        pass
-    elif room[random_y][random_x] == ROOMBA:
-        pass
-    else:
-        room[random_y][random_x] = DUST
+    if randint(1, 3) <= 2:
+        random_y = randint(0, height - 3)
+        random_x = randint(0, width - 2)
+        if room[random_y][random_x] == BASE:
+            pass
+        elif room[random_y][random_x] == ROOMBA:
+            pass
+        else:
+            if room[random_y][random_x] == " ":
+                room[random_y][random_x] = DUST1
+            elif room[random_y][random_x] == DUST1:
+                room[random_y][random_x] = DUST2
+            elif room[random_y][random_x] == DUST2:
+                room[random_y][random_x] = DUST3
 
 
 def curses_main(screen) -> None:
