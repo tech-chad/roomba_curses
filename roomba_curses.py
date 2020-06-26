@@ -13,6 +13,10 @@ DUST3 = "&"
 BASE = "["
 
 
+class RoombaError(Exception):
+    pass
+
+
 class Roomba:
     def __init__(self, base_y: int, base_x: int,
                  width: int, height: int) -> None:
@@ -134,16 +138,30 @@ def add_dust(room: list, height: int, width: int) -> None:
                 room[random_y][random_x] = DUST3
 
 
+def setup_room_list(width: int, height: int) -> list:
+    return [[" " for _ in range(width - 1)] for _ in range(height - 2)]
+
+
 def curses_main(screen) -> None:
     curses.curs_set(0)  # Set the cursor to off.
     screen.timeout(0)  # Turn blocking off for screen.getch().
     # curses.init_pair()
     screen_height, screen_width = screen.getmaxyx()
-    room = [[" " for _ in range(screen_width - 1)] for _ in range(screen_height - 2)]
+    if screen_height <= 15 or screen_width <= 15:
+        raise RoombaError("Error window size should be greater than 15")
+    room = setup_room_list(screen_width, screen_height)
     roomba = Roomba(5, 0, screen_width, screen_height)
     room[5][0] = BASE
     running = True
     while running:
+        resize = curses.is_term_resized(screen_height, screen_width)
+        if resize:
+            screen_height, screen_width = screen.getmaxyx()
+            if screen_height <= 15 or screen_width <= 15:
+                raise RoombaError("Error window size should be greater than 15")
+            room = setup_room_list(screen_width, screen_height)
+            roomba = Roomba(5, 0, screen_width, screen_height)
+            room[5][0] = BASE
         screen.clear()
         add_dust(room, screen_height, screen_width)
         roomba.operate(room)
@@ -164,8 +182,13 @@ def curses_main(screen) -> None:
 
 
 def main() -> int:
-    curses.wrapper(curses_main)
-    return 0
+    try:
+        curses.wrapper(curses_main)
+    except RoombaError as e:
+        print(e)
+        return 1
+    else:
+        return 0
 
 
 if __name__ == "__main__":
