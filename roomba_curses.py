@@ -58,7 +58,7 @@ class Roomba:
             self.state = "Cleaning"
             directions = []
             if self.y > 0:
-                if self.y - 1 != self.base_y:
+                if self.y - 1 != self.base_y and self.x != self.base_x:
                     directions.append((self.y - 1, self.x))
 
             if self.y > 0 and self.x < self.room_width:
@@ -66,7 +66,7 @@ class Roomba:
                     directions.append((self.y - 1, self.x + 1))
 
             if self.x < self.room_width:
-                if self.x + 1 != self.base_x:
+                if self.x + 1 != self.base_x and self.y != self.base_y:
                     directions.append((self.y, self.x + 1))
 
             if self.x < self.room_width and self.y < self.room_height:
@@ -74,7 +74,7 @@ class Roomba:
                     directions.append((self.y + 1, self.x + 1))
 
             if self.y < self.room_height:
-                if self.y + 1 != self.base_y:
+                if self.y + 1 != self.base_y and self.x != self.base_x:
                     directions.append((self.y + 1, self.x))
 
             if self.y < self.room_height and self.x > 0:
@@ -82,7 +82,7 @@ class Roomba:
                     directions.append((self.y + 1, self.x - 1))
 
             if self.x > 0:
-                if self.x - 1 != self.base_x:
+                if self.x - 1 != self.base_x and self.y != self.base_y:
                     directions.append((self.y, self.x - 1))
 
             if self.x > 0 and self.y > 0:
