@@ -27,13 +27,13 @@ class Roomba:
         self.discharge_rate = 2
         self.battery_size = 100
         self.low_charge = 20
-        self.state = "ready"  # ready, cleaning, charging
+        self.state = "Ready"  # ready, cleaning, charging
         self.speed = 5
         self.speed_count = 0
 
     def operate(self, room: list) -> None:
         # checks the state do _move or _recharge
-        if self.state == "ready" or self.state == "cleaning":
+        if self.state == "Ready" or self.state == "Cleaning":
             if self.speed_count == self.speed:
                 self.speed_count = 0
                 self.charge -= self.discharge_rate
@@ -43,7 +43,7 @@ class Roomba:
             else:
                 room[self.y][self.x] = ROOMBA
                 self.speed_count += 1
-        elif self.state == "charging":
+        elif self.state == "Charging":
             return self._charging()
 
     def get_statues(self) -> Tuple[float, str]:
@@ -55,7 +55,7 @@ class Roomba:
         if self.charge <= self.low_charge:
             self._return_home()
         else:
-            self.state = "cleaning"
+            self.state = "Cleaning"
             directions = []
             if self.y > 0:
                 if self.y - 1 != self.base_y:
@@ -105,7 +105,7 @@ class Roomba:
         else:
             x = self.x
         if x == self.base_x + 1 and y == self.base_y:
-            self.state = "charging"
+            self.state = "Charging"
         self.y = y
         self.x = x
         return self.y, self.x
@@ -114,7 +114,7 @@ class Roomba:
         self.charge += self.recharge_rate
         if self.charge >= self.battery_size:
             self.charge = self.battery_size
-            self.state = "ready"
+            self.state = "Ready"
 
 
 def add_dust(room: list, height: int, width: int) -> None:
@@ -137,6 +137,7 @@ def add_dust(room: list, height: int, width: int) -> None:
 def curses_main(screen) -> None:
     curses.curs_set(0)  # Set the cursor to off.
     screen.timeout(0)  # Turn blocking off for screen.getch().
+    # curses.init_pair()
     screen_height, screen_width = screen.getmaxyx()
     room = [[" " for _ in range(screen_width - 1)] for _ in range(screen_height - 2)]
     roomba = Roomba(5, 0, screen_width, screen_height)
@@ -148,10 +149,13 @@ def curses_main(screen) -> None:
         roomba.operate(room)
         for y, row in enumerate(room):
             for x, d in enumerate(row):
-                screen.addstr(y, x, d)
+                if d == ROOMBA:
+                    screen.addstr(y, x, d, curses.A_BOLD)
+                else:
+                    screen.addstr(y, x, d)
         battery, state = roomba.get_statues()
-        msg = f"battery: {battery:.1f}%   {state}"
-        screen.addstr(screen_height - 1, 0, msg)
+        msg = f" Battery: {battery:.1f}%   {state}"
+        screen.addstr(screen_height - 1, 0, msg, curses.A_BOLD)
         screen.refresh()
         ch = screen.getch()
         if ch in [81, 113]:
