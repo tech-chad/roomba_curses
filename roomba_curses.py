@@ -1,4 +1,5 @@
 """ Roomba simulation curses"""
+import argparse
 import curses
 from random import randint
 from random import choice
@@ -19,21 +20,26 @@ class RoombaError(Exception):
 
 class Roomba:
     def __init__(self, base_y: int, base_x: int,
-                 width: int, height: int) -> None:
+                 width: int, height: int, options: dict) -> None:
         self.base_y = base_y
         self.base_x = base_x
         self.y = base_y
         self.x = base_x + 1
         self.room_width = width - 1
         self.room_height = height - 3
-        self.charge = 100
-        self.recharge_rate = 5
-        self.discharge_rate = 2
-        self.battery_size = 100
-        self.low_charge = 20
+        self.charge = options["battery_size"]
+        self.recharge_rate = options["recharge_rate"]
+        self.discharge_rate = options["discharge_rate"]
+        self.battery_size = options["battery_size"]
+        if self.room_height > self.room_width:
+            self.low_charge = self.room_height * self.discharge_rate
+        else:
+            self.low_charge = self.room_width * self.discharge_rate
         self.state = "Ready"  # ready, cleaning, charging
-        self.speed = 5
+        self.speed = options["speed"]
         self.speed_count = 0
+        self.model = options["model"]
+        self.previous_positions = [(self.y, self.x)]
 
     def operate(self, room: list) -> None:
         # checks the state do _move or _recharge
@@ -55,45 +61,127 @@ class Roomba:
         return (self.charge / self.battery_size) * 100, self.state
 
     def _move(self) -> None:
-        # returns the next y,x location
         if self.charge <= self.low_charge:
             self._return_home()
-        else:
-            self.state = "Cleaning"
-            directions = []
-            if self.y > 0:
-                if self.y - 1 != self.base_y and self.x != self.base_x:
-                    directions.append((self.y - 1, self.x))
+        elif self.model == 1:
+            self._move1()
+        elif self.model == 2:
+            self._move2()
 
-            if self.y > 0 and self.x < self.room_width:
-                if self.y - 1 != self.base_y and self.x + 1 != self.base_x:
-                    directions.append((self.y - 1, self.x + 1))
+    def _move1(self) -> None:
+        self.state = "Cleaning"
+        directions = []
+        if self.y > 0:
+            if self.y - 1 != self.base_y and self.x != self.base_x:
+                directions.append((self.y - 1, self.x))
 
-            if self.x < self.room_width:
-                if self.x + 1 != self.base_x and self.y != self.base_y:
-                    directions.append((self.y, self.x + 1))
+        if self.y > 0 and self.x < self.room_width:
+            if self.y - 1 != self.base_y and self.x + 1 != self.base_x:
+                directions.append((self.y - 1, self.x + 1))
 
-            if self.x < self.room_width and self.y < self.room_height:
-                if self.x + 1 != self.base_x and self.y + 1 != self.base_y:
-                    directions.append((self.y + 1, self.x + 1))
+        if self.x < self.room_width:
+            if self.x + 1 != self.base_x and self.y != self.base_y:
+                directions.append((self.y, self.x + 1))
 
-            if self.y < self.room_height:
-                if self.y + 1 != self.base_y and self.x != self.base_x:
-                    directions.append((self.y + 1, self.x))
+        if self.x < self.room_width and self.y < self.room_height:
+            if self.x + 1 != self.base_x and self.y + 1 != self.base_y:
+                directions.append((self.y + 1, self.x + 1))
 
-            if self.y < self.room_height and self.x > 0:
-                if self.y + 1 != self.base_y and self.x - 1 != self.base_x:
-                    directions.append((self.y + 1, self.x - 1))
+        if self.y < self.room_height:
+            if self.y + 1 != self.base_y and self.x != self.base_x:
+                directions.append((self.y + 1, self.x))
 
-            if self.x > 0:
-                if self.x - 1 != self.base_x and self.y != self.base_y:
-                    directions.append((self.y, self.x - 1))
+        if self.y < self.room_height and self.x > 0:
+            if self.y + 1 == self.base_y and self.x - 1 == self.base_x:
+                pass
+            else:
+                directions.append((self.y + 1, self.x - 1))
 
-            if self.x > 0 and self.y > 0:
-                if self.y - 1 != self.base_y and self.x - 1 != self.base_x:
-                    directions.append((self.y - 1, self.x - 1))
+        if self.x > 0:
+            if self.x - 1 == self.base_x and self.y == self.base_y:
+                pass
+            else:
+                directions.append((self.y, self.x - 1))
 
-            self.y, self.x = choice(directions)
+        if self.x > 0 and self.y > 0:
+            if self.y - 1 == self.base_y and self.x - 1 == self.base_x:
+                pass
+            else:
+                directions.append((self.y - 1, self.x - 1))
+
+        self.y, self.x = choice(directions)
+
+    def _move2(self) -> None:
+        self.state = "Cleaning"
+        directions = []
+        if self.y > 0:
+            if self.y - 1 == self.base_y and self.x == self.base_x:
+                pass
+            elif (self.y - 1, self.x) in self.previous_positions:
+                pass
+            else:
+                directions.append((self.y - 1, self.x))
+
+        if self.y > 0 and self.x < self.room_width:
+            if self.y - 1 == self.base_y and self.x + 1 == self.base_x:
+                pass
+            elif (self.y - 1, self.x + 1) in self.previous_positions:
+                pass
+            else:
+                directions.append((self.y - 1, self.x + 1))
+
+        if self.x < self.room_width:
+            if self.x + 1 == self.base_x and self.y == self.base_y:
+                pass
+            elif (self.y, self.x + 1) in self.previous_positions:
+                pass
+            else:
+                directions.append((self.y, self.x + 1))
+
+        if self.x < self.room_width and self.y < self.room_height:
+            if self.x + 1 == self.base_x and self.y + 1 == self.base_y:
+                pass
+            elif (self.y + 1, self.x + 1) in self.previous_positions:
+                pass
+            else:
+                directions.append((self.y + 1, self.x + 1))
+
+        if self.y < self.room_height:
+            if self.y + 1 == self.base_y and self.x == self.base_x:
+                pass
+            elif (self.y + 1, self.x) in self.previous_positions:
+                pass
+            else:
+                directions.append((self.y + 1, self.x))
+
+        if self.y < self.room_height and self.x > 0:
+            if self.y + 1 == self.base_y and self.x - 1 == self.base_x:
+                pass
+            elif (self.y + 1, self.x - 1) in self.previous_positions:
+                pass
+            else:
+                directions.append((self.y + 1, self.x - 1))
+
+        if self.x > 0:
+            if self.x - 1 == self.base_x and self.y == self.base_y:
+                pass
+            elif (self.y, self.x + 1) in self.previous_positions:
+                pass
+            else:
+                directions.append((self.y, self.x - 1))
+
+        if self.x > 0 and self.y > 0:
+            if self.y - 1 == self.base_y and self.x - 1 == self.base_x:
+                pass
+            elif (self.y - 1, self.x - 1) in self.previous_positions:
+                pass
+            else:
+                directions.append((self.y - 1, self.x - 1))
+
+        self.y, self.x = choice(directions)
+        self.previous_positions.append((self.y, self.x))
+        if len(self.previous_positions) > 4:
+            self.previous_positions.pop(0)
 
     def _return_home(self) -> Tuple[int, int]:
         if self.y > self.base_y:
@@ -142,28 +230,45 @@ def setup_room_list(width: int, height: int) -> list:
     return [[" " for _ in range(width - 1)] for _ in range(height - 2)]
 
 
-def curses_main(screen) -> None:
+def roomba_option(model_number: int) -> dict:
+    options = {}
+    if model_number == 1:
+        options["model"] = 1
+        options["battery_size"] = 400
+        options["recharge_rate"] = 5
+        options["discharge_rate"] = 2
+        options["speed"] = 4
+    if model_number == 2:
+        options["model"] = 2
+        options["battery_size"] = 500
+        options["recharge_rate"] = 6
+        options["discharge_rate"] = 2
+        options["speed"] = 3
+    return options
+
+
+def curses_main(screen, model: int) -> None:
     curses.curs_set(0)  # Set the cursor to off.
     screen.timeout(0)  # Turn blocking off for screen.getch().
     # curses.init_pair()
-    screen_height, screen_width = screen.getmaxyx()
-    if screen_height <= 15 or screen_width <= 15:
+    height, width = screen.getmaxyx()
+    if height <= 15 or width <= 15:
         raise RoombaError("Error window size should be greater than 15")
-    room = setup_room_list(screen_width, screen_height)
-    roomba = Roomba(5, 0, screen_width, screen_height)
+    room = setup_room_list(width, height)
+    roomba = Roomba(5, 0, width, height, roomba_option(model))
     room[5][0] = BASE
     running = True
     while running:
-        resize = curses.is_term_resized(screen_height, screen_width)
+        resize = curses.is_term_resized(height, width)
         if resize:
-            screen_height, screen_width = screen.getmaxyx()
-            if screen_height <= 15 or screen_width <= 15:
+            height, width = screen.getmaxyx()
+            if height <= 15 or width <= 15:
                 raise RoombaError("Error window size should be greater than 15")
-            room = setup_room_list(screen_width, screen_height)
-            roomba = Roomba(5, 0, screen_width, screen_height)
+            room = setup_room_list(width, height)
+            roomba = Roomba(5, 0, width, height, roomba_option(model))
             room[5][0] = BASE
         screen.clear()
-        add_dust(room, screen_height, screen_width)
+        add_dust(room, height, width)
         roomba.operate(room)
         for y, row in enumerate(room):
             for x, d in enumerate(row):
@@ -172,8 +277,8 @@ def curses_main(screen) -> None:
                 else:
                     screen.addstr(y, x, d)
         battery, state = roomba.get_statues()
-        msg = f" Battery: {battery:.1f}%   {state}"
-        screen.addstr(screen_height - 1, 0, msg, curses.A_BOLD)
+        msg = f" Model: {model}  Battery: {battery:.1f}%   {state}"
+        screen.addstr(height - 1, 0, msg, curses.A_BOLD)
         screen.refresh()
         ch = screen.getch()
         if ch in [81, 113]:
@@ -182,8 +287,15 @@ def curses_main(screen) -> None:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m", dest="model",
+                        type=int,
+                        choices=[1, 2],
+                        default=1,
+                        help="Model number to use")
+    args = parser.parse_args()
     try:
-        curses.wrapper(curses_main)
+        curses.wrapper(curses_main, args.model)
     except RoombaError as e:
         print(e)
         return 1
