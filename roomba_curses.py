@@ -41,20 +41,25 @@ class Roomba:
         self.model = options["model"]
         self.previous_positions = [(self.y, self.x)]
 
-    def operate(self, room: list) -> None:
+    def operate(self, room: list) -> bool:
         # checks the state do _move or _recharge
         if self.state == "Ready" or self.state == "Cleaning":
-            if self.speed_count == self.speed:
+            if self.charge <= 0:
+                return True
+            elif self.speed_count == self.speed:
                 self.speed_count = 0
                 self.charge -= self.discharge_rate
                 room[self.y][self.x] = " "
                 self._move()
                 room[self.y][self.x] = ROOMBA
+                return False
             else:
                 room[self.y][self.x] = ROOMBA
                 self.speed_count += 1
+                return False
         elif self.state == "Charging":
-            return self._charging()
+            self._charging()
+            return False
 
     def get_statues(self) -> Tuple[float, str]:
         # returns the battery percent and state
@@ -257,10 +262,11 @@ def curses_main(screen, model: int) -> None:
     room = setup_room_list(width, height)
     roomba = Roomba(5, 0, width, height, roomba_option(model))
     room[5][0] = BASE
+    reset = False
     running = True
     while running:
         resize = curses.is_term_resized(height, width)
-        if resize:
+        if resize or reset:
             height, width = screen.getmaxyx()
             if height <= 15 or width <= 15:
                 raise RoombaError("Error window size should be greater than 15")
@@ -269,7 +275,7 @@ def curses_main(screen, model: int) -> None:
             room[5][0] = BASE
         screen.clear()
         add_dust(room, height, width)
-        roomba.operate(room)
+        reset = roomba.operate(room)
         for y, row in enumerate(room):
             for x, d in enumerate(row):
                 if d == ROOMBA:
