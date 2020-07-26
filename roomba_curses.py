@@ -5,6 +5,7 @@ from random import randint
 from random import choice
 from time import sleep
 
+from typing import List
 from typing import Tuple
 
 ROOMBA = "@"
@@ -12,6 +13,8 @@ DUST1 = "."
 DUST2 = ":"
 DUST3 = "&"
 BASE = "["
+OPPOSITE_DIRECTION = {"N": "S", "NE": "SW", "E": "W", "SE": "NW",
+                      "S": "N", "SW": "NE", "W": "E", "NW": "SE"}
 
 
 class RoombaError(Exception):
@@ -40,6 +43,8 @@ class Roomba:
         self.speed_count = 0
         self.model = options["model"]
         self.previous_positions = [(self.y, self.x)]
+        self.direction = ""
+        self.reverse_direction = ""
 
     def operate(self, room: list) -> bool:
         # checks the state do _move or _recharge
@@ -72,6 +77,8 @@ class Roomba:
             self._move1()
         elif self.model == 2:
             self._move2()
+        elif self.model == 3:
+            self._move3()
 
     def _move1(self) -> None:
         self.state = "Cleaning"
@@ -188,6 +195,34 @@ class Roomba:
         if len(self.previous_positions) > 4:
             self.previous_positions.pop(0)
 
+    def _move3(self) -> None:
+        good_directions = self._check_directions()
+        if self.direction == "" or self.direction not in good_directions:
+            self.direction = choice(good_directions)
+            self.reverse_direction = OPPOSITE_DIRECTION[self.direction]
+        if self.direction == "N":
+            self.y -= 1
+        elif self.direction == "NE":
+            self.y -= 1
+            self.x += 1
+        elif self.direction == "E":
+            self.x += 1
+        elif self.direction == "SE":
+            self.y += 1
+            self.x += 1
+        elif self.direction == "S":
+            self.y += 1
+        elif self.direction == "SW":
+            self.y += 1
+            self.x -= 1
+        elif self.direction == "W":
+            self.x -= 1
+        elif self.direction == "W":
+            self.x -= 1
+        elif self.direction == "NW":
+            self.y -= 1
+            self.x -= 1
+
     def _return_home(self) -> Tuple[int, int]:
         if self.y > self.base_y:
             y = self.y - 1
@@ -206,6 +241,52 @@ class Roomba:
         self.y = y
         self.x = x
         return self.y, self.x
+
+    def _check_directions(self) -> List[str]:
+        good_directions = []
+        if self.y - 1 >= 0:  # N
+            if self.y - 1 == self.base_y and self.x == self.base_x:
+                pass
+            else:
+                good_directions.append("N")
+        if self.y - 1 >= 0 and self.x + 1 < self.room_width:
+            if self.y - 1 == self.base_y and self.x + 1 == self.base_x:
+                pass
+            else:
+                good_directions.append("NE")
+        if self.x + 1 < self.room_width:
+            if self.y == self.base_y and self.x + 1 == self.base_x:
+                pass
+            else:
+                good_directions.append("E")
+        if self.y + 1 <= self.room_height and self.x + 1 < self.room_width:
+            if self.y + 1 == self.base_y and self.x + 1 == self.base_x:
+                pass
+            else:
+                good_directions.append("SE")
+        if self.y + 1 <= self.room_height:
+            if self.y + 1 == self.base_y and self.x == self.base_x:
+                pass
+            else:
+                good_directions.append("S")
+        if self.y + 1 <= self.room_height and self.x - 1 >= 0:
+            if self.y + 1 == self.base_y and self.x - 1 == self.base_x:
+                pass
+            else:
+                good_directions.append("SW")
+        if self.x - 1 >= 0:
+            if self.y == self.base_y and self.x - 1 == self.base_x:
+                pass
+            else:
+                good_directions.append("W")
+        if self.y - 1 >= 0 and self.x - 1 >= 0:
+            if self.y - 1 == self.base_y and self.x - 1 == self.base_x:
+                pass
+            else:
+                good_directions.append("NW")
+        if self.reverse_direction in good_directions:
+            good_directions.pop(good_directions.index(self.reverse_direction))
+        return good_directions
 
     def _charging(self) -> None:
         self.charge += self.recharge_rate
@@ -249,6 +330,12 @@ def roomba_option(model_number: int) -> dict:
         options["recharge_rate"] = 6
         options["discharge_rate"] = 2
         options["speed"] = 3
+    elif model_number == 3:
+        options["model"] = 3
+        options["battery_size"] = 600
+        options["recharge_rate"] = 6
+        options["discharge_rate"] = 1.5
+        options["speed"] = 2
     return options
 
 
@@ -296,7 +383,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", dest="model",
                         type=int,
-                        choices=[1, 2],
+                        choices=[1, 2, 3],
                         default=1,
                         help="Model number to use")
     args = parser.parse_args()
